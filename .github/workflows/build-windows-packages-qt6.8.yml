@@ -100,19 +100,29 @@ jobs:
 
       - name: Rename package
         run: |
-            cd packages/BUILD/output/
+            echo "Current directory: $(Get-Location)"
+            echo "Looking for file: ${{ env.PACKAGEFILENAME }}"
+            echo "Contents of packages/BUILD/output/:"
+            Get-ChildItem "packages/BUILD/output/" -Recurse -ErrorAction Continue | Format-Table Name, FullName
+            echo "Contents of packages/BUILD/:"
+            Get-ChildItem "packages/BUILD/" -Recurse -ErrorAction Continue | Format-Table Name, FullName
+            echo "All files in workspace:"
+            Get-ChildItem -Recurse -Filter "*${{ env.PACKAGEFILENAME }}*" -ErrorAction Continue | Format-Table Name, FullName
+            $foundFile = Get-ChildItem -Recurse -Filter "${{ env.PACKAGEFILENAME }}" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($foundFile) {
+            echo "Found file at: $($foundFile.FullName)"
+            $dir = $foundFile.DirectoryName
+            cd $dir
             $filename = "${{ env.PACKAGEFILENAME }}"
-            if ($filename -and (Test-Path $filename)) {
-                $extension = [System.IO.Path]::GetExtension($filename)
-                $nameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($filename)
-                $new_filename = "$nameWithoutExtension-qt6$extension"
-                Rename-Item $filename $new_filename
-                echo "PACKAGEFILENAME=$new_filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-                echo "Renamed $filename to $new_filename"
+            $extension = [System.IO.Path]::GetExtension($filename)
+            $nameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($filename)
+            $new_filename = "$nameWithoutExtension-qt6$extension"
+            Rename-Item $filename $new_filename
+            echo "PACKAGEFILENAME=$new_filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            echo "Renamed $filename to $new_filename"
             } else {
-                echo "Error: File '$filename' not found in current directory"
-                Get-ChildItem
-                exit 1
+            echo "Error: File '${{ env.PACKAGEFILENAME }}' not found anywhere in workspace"
+            exit 1
             }
 
       - name: Create artifact
