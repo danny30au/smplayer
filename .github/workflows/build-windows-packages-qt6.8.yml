@@ -117,13 +117,15 @@ jobs:
          exit 1
          } 
          
-      - name: Create artifact
-        if: github.event_name != 'release'
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.PACKAGEFILENAME }}
-          path: packages\BUILD\output\${{ env.PACKAGEFILENAME }}
-
+          name: smplayer-25.6.0.10395-x64-qt6.exe
+          path: packages/BUILD/smplayer-build/smplayer-25.6.0.10395-x64-qt6.exe
+          if-no-files-found: error
+          compression-level: 6
+          overwrite: false
+        
       - name: Upload package to release
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
