@@ -99,8 +99,7 @@ jobs:
            echo "PACKAGEFILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Rename package
-        run: |
-         Instead of looking for the versioned installer, look for smplayer.exe
+        run: |      
          $foundFile = Get-ChildItem -Recurse -Filter "smplayer.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
          if ($foundFile) {
          echo "Found file at: $($foundFile.FullName)"
