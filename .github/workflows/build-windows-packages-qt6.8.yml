@@ -64,6 +64,26 @@ jobs:
         if: ${{ matrix.config.arch == 'x64' }}
         run: echo "$env:IQTA_TOOLS\mingw1310_64\bin\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+      - name: Fix NSIS script for Qt6
+        if: ${{ matrix.config.portable == false }}
+        run: |
+          # Update NSIS script to work with Qt6
+          $nsisScript = "packages\BUILD\smplayer.nsi"
+          if (Test-Path $nsisScript) {
+            $content = Get-Content $nsisScript -Raw
+            # Replace Qt5Core.dll with Qt6Core.dll
+            $content = $content -replace 'Qt5Core\.dll', 'Qt6Core.dll'
+            # Also update other potential Qt5 references
+            $content = $content -replace 'Qt5Gui\.dll', 'Qt6Gui.dll'
+            $content = $content -replace 'Qt5Widgets\.dll', 'Qt6Widgets.dll'
+            $content = $content -replace 'Qt5Network\.dll', 'Qt6Network.dll'
+            # Update any version detection logic if needed
+            $content | Set-Content $nsisScript -Encoding UTF8
+            Write-Host "Updated NSIS script for Qt6"
+          } else {
+            Write-Warning "NSIS script not found at $nsisScript"
+          }
+
       - name: Compile themes
         run: .\compile_themes.cmd
 
@@ -83,9 +103,27 @@ jobs:
             .\install.cmd
           }
 
+      - name: Verify Qt6 DLLs exist
+        if: ${{ matrix.config.portable == false }}
+        run: |
+          Write-Host "Checking for Qt6 DLLs in smplayer-build directory:"
+          if (Test-Path "smplayer-build") {
+            Get-ChildItem "smplayer-build\Qt6*.dll" | ForEach-Object { Write-Host "Found: $($_.Name)" }
+          } else {
+            Write-Host "smplayer-build directory not found"
+          }
+
       - name: Create installer
         if: ${{ matrix.config.portable == false }}
         run: |
+          # Ensure Qt6 DLLs are available for NSIS
+          $qtBinPath = "$env:IQTA_TOOLS\mingw1310_64\bin"
+          if (Test-Path $qtBinPath) {
+            Copy-Item "$qtBinPath\Qt6Core.dll" "smplayer-build\" -ErrorAction SilentlyContinue
+            Copy-Item "$qtBinPath\Qt6Gui.dll" "smplayer-build\" -ErrorAction SilentlyContinue
+            Copy-Item "$qtBinPath\Qt6Widgets.dll" "smplayer-build\" -ErrorAction SilentlyContinue
+            Copy-Item "$qtBinPath\Qt6Network.dll" "smplayer-build\" -ErrorAction SilentlyContinue
+          }
           .\nsis.cmd
           $filename = Get-Content packages\BUILD\installer_filename.txt -TotalCount 1
           echo "PACKAGEFILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -103,9 +141,17 @@ jobs:
         shell: pwsh
         run: |
           $originalFile = "${{ env.ORIGINAL_FILENAME }}"
+          if ([string]::IsNullOrEmpty($originalFile)) {
+            Write-Error "ORIGINAL_FILENAME is empty!"
+            exit 1
+          }
+          
           $extension = [System.IO.Path]::GetExtension($originalFile)
           $filenameWithoutExt = [System.IO.Path]::GetFileNameWithoutExtension($originalFile)
-          $newFilename = "$filenameWithoutExt-qt6$extension"
+          
+          # Remove any existing -qt6 suffix to avoid duplicates
+          $baseName = $filenameWithoutExt -replace '-qt6$', ''
+          $newFilename = "$baseName-qt6$extension"
           
           Write-Host "Renaming $originalFile to $newFilename"
           
@@ -116,8 +162,16 @@ jobs:
             Write-Host "Successfully renamed to $newFilename"
           } else {
             Write-Error "File $outputDir/$originalFile not found!"
-            Get-ChildItem -Path $outputDir | ForEach-Object { Write-Host "Found: $($_.Name)" }
+            Write-Host "Available files in $outputDir :"
+            Get-ChildItem -Path $outputDir | ForEach-Object { Write-Host "  $($_.Name)" }
             exit 1
+          }
+
+      - name: Debug - List final artifacts
+        run: |
+          Write-Host "Final artifacts in packages/BUILD/output:"
+          Get-ChildItem -Path "packages/BUILD/output" -Recurse | ForEach-Object { 
+            Write-Host "  $($_.Name) - $($_.Length) bytes"
           }
 
       - name: Create artifact
