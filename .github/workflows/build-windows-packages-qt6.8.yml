@@ -64,24 +64,112 @@ jobs:
         if: ${{ matrix.config.arch == 'x64' }}
         run: echo "$env:IQTA_TOOLS\mingw1310_64\bin\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Fix NSIS script for Qt6
+      - name: Comprehensive NSIS script fix for Qt6
         if: ${{ matrix.config.portable == false }}
         run: |
-          # Update NSIS script to work with Qt6
           $nsisScript = "packages\BUILD\smplayer.nsi"
           if (Test-Path $nsisScript) {
+            # Read the entire script
             $content = Get-Content $nsisScript -Raw
-            # Replace Qt5Core.dll with Qt6Core.dll
-            $content = $content -replace 'Qt5Core\.dll', 'Qt6Core.dll'
-            # Also update other potential Qt5 references
-            $content = $content -replace 'Qt5Gui\.dll', 'Qt6Gui.dll'
-            $content = $content -replace 'Qt5Widgets\.dll', 'Qt6Widgets.dll'
-            $content = $content -replace 'Qt5Network\.dll', 'Qt6Network.dll'
-            # Update any version detection logic if needed
+            
+            # First, let's check what's around line 1194
+            $lines = $content -split "`n"
+            $startLine = [Math]::Max(1185, 0)
+            $endLine = [Math]::Min(1205, $lines.Length - 1)
+            Write-Host "Content around line 1194:"
+            for ($i = $startLine; $i -le $endLine; $i++) {
+              Write-Host "$($i+1): $($lines[$i])"
+            }
+            
+            # Common Qt5 to Qt6 replacements
+            $replacements = @{
+              'Qt5Core\.dll' = 'Qt6Core.dll'
+              'Qt5Gui\.dll' = 'Qt6Gui.dll'
+              'Qt5Widgets\.dll' = 'Qt6Widgets.dll'
+              'Qt5Network\.dll' = 'Qt6Network.dll'
+              'Qt5Multimedia\.dll' = 'Qt6Multimedia.dll'
+              'Qt5MultimediaWidgets\.dll' = 'Qt6MultimediaWidgets.dll'
+              'libqt5' = 'libqt6'
+              'qt5' = 'qt6'
+            }
+            
+            # Apply replacements
+            foreach ($pattern in $replacements.Keys) {
+              $content = $content -replace $pattern, $replacements[$pattern]
+            }
+            
+            # Additional fix for GetDLLVersionLocal calls
+            # If the specific line 1194 is failing, we might need to handle it specially
+            $content = $content -replace 'GetDLLVersionLocal\s+"[^"]*Qt5Core\.dll"', 'GetDLLVersionLocal "Qt6Core.dll"'
+            
+            # Write the updated content back
             $content | Set-Content $nsisScript -Encoding UTF8
-            Write-Host "Updated NSIS script for Qt6"
+            Write-Host "Updated NSIS script for Qt6 compatibility"
+            
+            # Show the updated lines around 1194
+            $updatedLines = $content -split "`n"
+            Write-Host "Updated content around line 1194:"
+            for ($i = $startLine; $i -le $endLine; $i++) {
+              Write-Host "$($i+1): $($updatedLines[$i])"
+            }
           } else {
-            Write-Warning "NSIS script not found at $nsisScript"
+            Write-Error "NSIS script not found at $nsisScript"
+          }
+
+      - name: Copy Qt6 DLLs for NSIS
+        if: ${{ matrix.config.portable == false }}
+        run: |
+          $qtBinPath = "$env:IQTA_TOOLS\mingw1310_64\bin"
+          $targetDir = "smplayer-build"
+          
+          if (Test-Path $qtBinPath) {
+            # Create target directory if it doesn't exist
+            if (!(Test-Path $targetDir)) {
+              New-Item -ItemType Directory -Path $targetDir -Force
+            }
+            
+            # Copy essential Qt6 DLLs
+            $qtDlls = @(
+              "Qt6Core.dll",
+              "Qt6Gui.dll", 
+              "Qt6Widgets.dll",
+              "Qt6Network.dll",
+              "Qt6Multimedia.dll",
+              "Qt6MultimediaWidgets.dll"
+            )
+            
+            foreach ($dll in $qtDlls) {
+              $source = Join-Path $qtBinPath $dll
+              if (Test-Path $source) {
+                Copy-Item $source $targetDir -ErrorAction SilentlyContinue
+                Write-Host "Copied $dll"
+              } else {
+                Write-Warning "Qt6 DLL not found: $source"
+              }
+            }
+            
+            # Also copy any required Qt6 plugins
+            $pluginsSource = "$env:IQTA_TOOLS\mingw1310_64\plugins"
+            $pluginsTarget = "smplayer-build\plugins"
+            if (Test-Path $pluginsSource) {
+              if (!(Test-Path $pluginsTarget)) {
+                New-Item -ItemType Directory -Path $pluginsTarget -Force
+              }
+              Copy-Item "$pluginsSource\*" $pluginsTarget -Recurse -Force
+              Write-Host "Copied Qt6 plugins"
+            }
+          } else {
+            Write-Warning "Qt bin path not found: $qtBinPath"
+          }
+
+      - name: Verify DLLs for NSIS
+        if: ${{ matrix.config.portable == false }}
+        run: |
+          Write-Host "Checking DLLs in smplayer-build directory:"
+          if (Test-Path "smplayer-build") {
+            Get-ChildItem "smplayer-build\*.dll" | ForEach-Object { 
+              Write-Host "  $($_.Name) - $([math]::Round($_.Length/1KB, 2)) KB" 
+            }
           }
 
       - name: Compile themes
@@ -103,27 +191,9 @@ jobs:
             .\install.cmd
           }
 
-      - name: Verify Qt6 DLLs exist
-        if: ${{ matrix.config.portable == false }}
-        run: |
-          Write-Host "Checking for Qt6 DLLs in smplayer-build directory:"
-          if (Test-Path "smplayer-build") {
-            Get-ChildItem "smplayer-build\Qt6*.dll" | ForEach-Object { Write-Host "Found: $($_.Name)" }
-          } else {
-            Write-Host "smplayer-build directory not found"
-          }
-
       - name: Create installer
         if: ${{ matrix.config.portable == false }}
         run: |
-          # Ensure Qt6 DLLs are available for NSIS
-          $qtBinPath = "$env:IQTA_TOOLS\mingw1310_64\bin"
-          if (Test-Path $qtBinPath) {
-            Copy-Item "$qtBinPath\Qt6Core.dll" "smplayer-build\" -ErrorAction SilentlyContinue
-            Copy-Item "$qtBinPath\Qt6Gui.dll" "smplayer-build\" -ErrorAction SilentlyContinue
-            Copy-Item "$qtBinPath\Qt6Widgets.dll" "smplayer-build\" -ErrorAction SilentlyContinue
-            Copy-Item "$qtBinPath\Qt6Network.dll" "smplayer-build\" -ErrorAction SilentlyContinue
-          }
           .\nsis.cmd
           $filename = Get-Content packages\BUILD\installer_filename.txt -TotalCount 1
           echo "PACKAGEFILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -165,13 +235,6 @@ jobs:
             Write-Host "Available files in $outputDir :"
             Get-ChildItem -Path $outputDir | ForEach-Object { Write-Host "  $($_.Name)" }
             exit 1
-          }
-
-      - name: Debug - List final artifacts
-        run: |
-          Write-Host "Final artifacts in packages/BUILD/output:"
-          Get-ChildItem -Path "packages/BUILD/output" -Recurse | ForEach-Object { 
-            Write-Host "  $($_.Name) - $($_.Length) bytes"
           }
 
       - name: Create artifact
