@@ -11,7 +11,7 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          #- { arch: 'x64', 'portable': false }
+          - { arch: 'x64', 'portable': false }
           - { arch: 'x64', 'portable': true }
 
     runs-on: windows-2022
@@ -19,16 +19,14 @@ jobs:
       PORTABLE: ${{ matrix.config.portable }}
 
     steps:
-      - name: Checkout
+      - name: Checkout build scripts
         run: git clone https://github.com/smplayer-dev/smplayer-build.git .
-
-      #- name: Install sources
-      #  run: .\download_packages.cmd
 
       - name: Install sources (normal)
         if: ${{ matrix.config.portable == false }}
         uses: actions/checkout@v4
         with:
+          repository: smplayer-dev/smplayer
           path: packages/smplayer
           ref: qt6
           fetch-depth: 0
@@ -37,14 +35,15 @@ jobs:
         if: ${{ matrix.config.portable == true }}
         uses: actions/checkout@v4
         with:
+          repository: smplayer-dev/smplayer
           path: packages/smplayer-portable
           ref: qt6
           fetch-depth: 0
 
       - name: Install themes
         run: |
-            git clone --depth 1 https://github.com/smplayer-dev/smplayer-themes.git packages\smplayer-themes
-            git clone --depth 1 https://github.com/smplayer-dev/smplayer-skins.git packages\smplayer-skins
+          git clone --depth 1 https://github.com/smplayer-dev/smplayer-themes.git packages\smplayer-themes
+          git clone --depth 1 https://github.com/smplayer-dev/smplayer-skins.git packages\smplayer-skins
 
       - name: Install mplayer and mpv
         run: .\uncompress_players.cmd
@@ -70,51 +69,63 @@ jobs:
 
       - name: Compile smplayer
         run: |
-            if ($env:PORTABLE -eq $true) {
-              .\compile_smplayer.cmd pe
-            } else {
-              .\compile_smplayer.cmd
-            }
+          if ($env:PORTABLE -eq 'true') {
+            .\compile_smplayer.cmd pe
+          } else {
+            .\compile_smplayer.cmd
+          }
 
       - name: Install
         run: |
-            if ($env:PORTABLE -eq $true) {
-              .\install.cmd pe
-            } else {
-              .\install.cmd
-            }
+          if ($env:PORTABLE -eq 'true') {
+            .\install.cmd pe
+          } else {
+            .\install.cmd
+          }
 
       - name: Create installer
         if: ${{ matrix.config.portable == false }}
         run: |
-           .\nsis.cmd
-           $filename = Get-Content packages\BUILD\installer_filename.txt -TotalCount 1
-           echo "PACKAGEFILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          .\nsis.cmd
+          $filename = Get-Content packages\BUILD\installer_filename.txt -TotalCount 1
+          echo "PACKAGEFILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "ORIGINAL_FILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Create 7z package
         if: ${{ matrix.config.portable == true }}
         run: |
-           .\create_portable_package.cmd
-           $filename = Get-Content packages\BUILD\portable_filename.txt -TotalCount 1
-           echo "PACKAGEFILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          .\create_portable_package.cmd
+          $filename = Get-Content packages\BUILD\portable_filename.txt -TotalCount 1
+          echo "PACKAGEFILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "ORIGINAL_FILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Rename package
-        shell: bash
+      - name: Rename package for Qt6
+        shell: pwsh
         run: |
-            PACKAGEFILENAME=${{ env.PACKAGEFILENAME }}
-            extension="${PACKAGEFILENAME##*.}"
-            filename="${PACKAGEFILENAME%.*}"
-            new_filename="$filename-qt6.$extension"
-            cd packages/BUILD/output/
-            mv $PACKAGEFILENAME $new_filename
-            echo "PACKAGEFILENAME=$new_filename" >> $GITHUB_ENV
+          $originalFile = "${{ env.ORIGINAL_FILENAME }}"
+          $extension = [System.IO.Path]::GetExtension($originalFile)
+          $filenameWithoutExt = [System.IO.Path]::GetFileNameWithoutExtension($originalFile)
+          $newFilename = "$filenameWithoutExt-qt6$extension"
+          
+          Write-Host "Renaming $originalFile to $newFilename"
+          
+          $outputDir = "packages/BUILD/output"
+          if (Test-Path "$outputDir/$originalFile") {
+            Rename-Item -Path "$outputDir/$originalFile" -NewName $newFilename
+            echo "PACKAGEFILENAME=$newFilename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            Write-Host "Successfully renamed to $newFilename"
+          } else {
+            Write-Error "File $outputDir/$originalFile not found!"
+            Get-ChildItem -Path $outputDir | ForEach-Object { Write-Host "Found: $($_.Name)" }
+            exit 1
+          }
 
       - name: Create artifact
         if: github.event_name != 'release'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PACKAGEFILENAME }}
-          path: packages\BUILD\output\${{ env.PACKAGEFILENAME }}
+          path: packages/BUILD/output/${{ env.PACKAGEFILENAME }}
 
       - name: Upload package to release
         if: github.event_name == 'release'
