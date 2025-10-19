@@ -22,6 +22,17 @@ jobs:
       - name: Checkout build scripts
         run: git clone https://github.com/smplayer-dev/smplayer-build.git .
 
+      - name: Explore repository structure
+        run: |
+          Write-Host "Current directory structure:"
+          Get-ChildItem -Recurse -Depth 2 | Format-Table Name, FullName
+          
+          Write-Host "Looking for NSIS scripts:"
+          Get-ChildItem -Recurse -Filter "*.nsi" -ErrorAction SilentlyContinue | Format-Table FullName
+          
+          Write-Host "Looking for BUILD directory:"
+          Get-ChildItem -Recurse -Filter "BUILD" -Directory -ErrorAction SilentlyContinue | Format-Table FullName
+
       - name: Install sources (normal)
         if: ${{ matrix.config.portable == false }}
         uses: actions/checkout@v4
@@ -64,111 +75,99 @@ jobs:
         if: ${{ matrix.config.arch == 'x64' }}
         run: echo "$env:IQTA_TOOLS\mingw1310_64\bin\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Comprehensive NSIS script fix for Qt6
+      - name: Find and fix NSIS script for Qt6
         if: ${{ matrix.config.portable == false }}
         run: |
-          $nsisScript = "packages\BUILD\smplayer.nsi"
-          if (Test-Path $nsisScript) {
-            # Read the entire script
-            $content = Get-Content $nsisScript -Raw
-            
-            # First, let's check what's around line 1194
-            $lines = $content -split "`n"
-            $startLine = [Math]::Max(1185, 0)
-            $endLine = [Math]::Min(1205, $lines.Length - 1)
-            Write-Host "Content around line 1194:"
-            for ($i = $startLine; $i -le $endLine; $i++) {
-              Write-Host "$($i+1): $($lines[$i])"
+          # Search for NSIS script in common locations
+          $possiblePaths = @(
+            "packages\BUILD\smplayer.nsi",
+            "BUILD\smplayer.nsi", 
+            "smplayer.nsi",
+            "packages\smplayer\smplayer.nsi",
+            "packages\smplayer-build\smplayer.nsi",
+            ".\smplayer.nsi"
+          )
+          
+          $nsisScript = $null
+          foreach ($path in $possiblePaths) {
+            if (Test-Path $path) {
+              $nsisScript = $path
+              Write-Host "Found NSIS script at: $nsisScript"
+              break
             }
-            
-            # Common Qt5 to Qt6 replacements
-            $replacements = @{
-              'Qt5Core\.dll' = 'Qt6Core.dll'
-              'Qt5Gui\.dll' = 'Qt6Gui.dll'
-              'Qt5Widgets\.dll' = 'Qt6Widgets.dll'
-              'Qt5Network\.dll' = 'Qt6Network.dll'
-              'Qt5Multimedia\.dll' = 'Qt6Multimedia.dll'
-              'Qt5MultimediaWidgets\.dll' = 'Qt6MultimediaWidgets.dll'
-              'libqt5' = 'libqt6'
-              'qt5' = 'qt6'
-            }
-            
-            # Apply replacements
-            foreach ($pattern in $replacements.Keys) {
-              $content = $content -replace $pattern, $replacements[$pattern]
-            }
-            
-            # Additional fix for GetDLLVersionLocal calls
-            # If the specific line 1194 is failing, we might need to handle it specially
-            $content = $content -replace 'GetDLLVersionLocal\s+"[^"]*Qt5Core\.dll"', 'GetDLLVersionLocal "Qt6Core.dll"'
-            
-            # Write the updated content back
-            $content | Set-Content $nsisScript -Encoding UTF8
-            Write-Host "Updated NSIS script for Qt6 compatibility"
-            
-            # Show the updated lines around 1194
-            $updatedLines = $content -split "`n"
-            Write-Host "Updated content around line 1194:"
-            for ($i = $startLine; $i -le $endLine; $i++) {
-              Write-Host "$($i+1): $($updatedLines[$i])"
-            }
-          } else {
-            Write-Error "NSIS script not found at $nsisScript"
           }
+          
+          if (-not $nsisScript) {
+            # Try to find any .nsi file
+            $foundScripts = Get-ChildItem -Recurse -Filter "*.nsi" -ErrorAction SilentlyContinue
+            if ($foundScripts) {
+              $nsisScript = $foundScripts[0].FullName
+              Write-Host "Found NSIS script at: $nsisScript"
+            } else {
+              Write-Error "No NSIS script found in the repository!"
+              exit 1
+            }
+          }
+          
+          # Store the path for later steps
+          echo "NSIS_SCRIPT_PATH=$nsisScript" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          
+          # Now fix the Qt5 to Qt6 references
+          Write-Host "Updating NSIS script at: $nsisScript"
+          $content = Get-Content $nsisScript -Raw
+          
+          # Replace Qt5 references with Qt6
+          $replacements = @{
+            'Qt5Core\.dll' = 'Qt6Core.dll'
+            'Qt5Gui\.dll' = 'Qt6Gui.dll'
+            'Qt5Widgets\.dll' = 'Qt6Widgets.dll'
+            'Qt5Network\.dll' = 'Qt6Network.dll'
+            'libqt5' = 'libqt6'
+            'qt5' = 'qt6'
+          }
+          
+          foreach ($pattern in $replacements.Keys) {
+            $content = $content -replace $pattern, $replacements[$pattern]
+          }
+          
+          # Update GetDLLVersionLocal calls
+          $content = $content -replace 'GetDLLVersionLocal\s+"[^"]*Qt5Core\.dll"', 'GetDLLVersionLocal "Qt6Core.dll"'
+          
+          $content | Set-Content $nsisScript -Encoding UTF8
+          Write-Host "Successfully updated NSIS script for Qt6"
 
       - name: Copy Qt6 DLLs for NSIS
         if: ${{ matrix.config.portable == false }}
         run: |
           $qtBinPath = "$env:IQTA_TOOLS\mingw1310_64\bin"
-          $targetDir = "smplayer-build"
+          $targetDir = "."
+          
+          # Try to determine the correct target directory based on NSIS script location
+          if ($env:NSIS_SCRIPT_PATH) {
+            $scriptDir = [System.IO.Path]::GetDirectoryName($env:NSIS_SCRIPT_PATH)
+            if (Test-Path $scriptDir) {
+              $targetDir = $scriptDir
+            }
+          }
+          
+          Write-Host "Copying Qt6 DLLs to: $targetDir"
           
           if (Test-Path $qtBinPath) {
-            # Create target directory if it doesn't exist
-            if (!(Test-Path $targetDir)) {
-              New-Item -ItemType Directory -Path $targetDir -Force
-            }
-            
-            # Copy essential Qt6 DLLs
             $qtDlls = @(
               "Qt6Core.dll",
               "Qt6Gui.dll", 
               "Qt6Widgets.dll",
-              "Qt6Network.dll",
-              "Qt6Multimedia.dll",
-              "Qt6MultimediaWidgets.dll"
+              "Qt6Network.dll"
             )
             
             foreach ($dll in $qtDlls) {
               $source = Join-Path $qtBinPath $dll
               if (Test-Path $source) {
                 Copy-Item $source $targetDir -ErrorAction SilentlyContinue
-                Write-Host "Copied $dll"
+                Write-Host "Copied $dll to $targetDir"
               } else {
                 Write-Warning "Qt6 DLL not found: $source"
               }
-            }
-            
-            # Also copy any required Qt6 plugins
-            $pluginsSource = "$env:IQTA_TOOLS\mingw1310_64\plugins"
-            $pluginsTarget = "smplayer-build\plugins"
-            if (Test-Path $pluginsSource) {
-              if (!(Test-Path $pluginsTarget)) {
-                New-Item -ItemType Directory -Path $pluginsTarget -Force
-              }
-              Copy-Item "$pluginsSource\*" $pluginsTarget -Recurse -Force
-              Write-Host "Copied Qt6 plugins"
-            }
-          } else {
-            Write-Warning "Qt bin path not found: $qtBinPath"
-          }
-
-      - name: Verify DLLs for NSIS
-        if: ${{ matrix.config.portable == false }}
-        run: |
-          Write-Host "Checking DLLs in smplayer-build directory:"
-          if (Test-Path "smplayer-build") {
-            Get-ChildItem "smplayer-build\*.dll" | ForEach-Object { 
-              Write-Host "  $($_.Name) - $([math]::Round($_.Length/1KB, 2)) KB" 
             }
           }
 
@@ -191,21 +190,86 @@ jobs:
             .\install.cmd
           }
 
-      - name: Create installer
+      - name: Create installer with dynamic path handling
         if: ${{ matrix.config.portable == false }}
         run: |
+          # First, let's check what files were created
+          Write-Host "Files in current directory before NSIS:"
+          Get-ChildItem | Format-Table Name
+          
+          Write-Host "Checking for Qt6Core.dll:"
+          if (Test-Path "Qt6Core.dll") {
+            Write-Host "Qt6Core.dll found in current directory"
+          } else {
+            # Try to copy it again
+            $qtBinPath = "$env:IQTA_TOOLS\mingw1310_64\bin"
+            if (Test-Path "$qtBinPath\Qt6Core.dll") {
+              Copy-Item "$qtBinPath\Qt6Core.dll" ".\" -ErrorAction SilentlyContinue
+              Write-Host "Copied Qt6Core.dll to current directory"
+            }
+          }
+          
           .\nsis.cmd
-          $filename = Get-Content packages\BUILD\installer_filename.txt -TotalCount 1
-          echo "PACKAGEFILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "ORIGINAL_FILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          
+          # Look for the installer filename in common locations
+          $possibleFiles = @(
+            "packages\BUILD\installer_filename.txt",
+            "BUILD\installer_filename.txt",
+            "installer_filename.txt"
+          )
+          
+          $filenameFile = $null
+          foreach ($file in $possibleFiles) {
+            if (Test-Path $file) {
+              $filenameFile = $file
+              break
+            }
+          }
+          
+          if ($filenameFile) {
+            $filename = Get-Content $filenameFile -TotalCount 1
+            echo "PACKAGEFILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            echo "ORIGINAL_FILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            Write-Host "Found installer filename: $filename"
+          } else {
+            Write-Error "Could not find installer_filename.txt"
+            # Try to find the executable directly
+            $exeFiles = Get-ChildItem -Recurse -Filter "smplayer*.exe" -ErrorAction SilentlyContinue
+            if ($exeFiles) {
+              $filename = $exeFiles[0].Name
+              echo "PACKAGEFILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+              echo "ORIGINAL_FILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+              Write-Host "Using found EXE file: $filename"
+            }
+          }
 
       - name: Create 7z package
         if: ${{ matrix.config.portable == true }}
         run: |
           .\create_portable_package.cmd
-          $filename = Get-Content packages\BUILD\portable_filename.txt -TotalCount 1
-          echo "PACKAGEFILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "ORIGINAL_FILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          
+          # Look for portable filename in common locations
+          $possibleFiles = @(
+            "packages\BUILD\portable_filename.txt", 
+            "BUILD\portable_filename.txt",
+            "portable_filename.txt"
+          )
+          
+          $filenameFile = $null
+          foreach ($file in $possibleFiles) {
+            if (Test-Path $file) {
+              $filenameFile = $file
+              break
+            }
+          }
+          
+          if ($filenameFile) {
+            $filename = Get-Content $filenameFile -TotalCount 1
+            echo "PACKAGEFILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            echo "ORIGINAL_FILENAME=$filename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          } else {
+            Write-Error "Could not find portable_filename.txt"
+          }
 
       - name: Rename package for Qt6
         shell: pwsh
@@ -218,22 +282,34 @@ jobs:
           
           $extension = [System.IO.Path]::GetExtension($originalFile)
           $filenameWithoutExt = [System.IO.Path]::GetFileNameWithoutExtension($originalFile)
-          
-          # Remove any existing -qt6 suffix to avoid duplicates
           $baseName = $filenameWithoutExt -replace '-qt6$', ''
           $newFilename = "$baseName-qt6$extension"
           
           Write-Host "Renaming $originalFile to $newFilename"
           
-          $outputDir = "packages/BUILD/output"
-          if (Test-Path "$outputDir/$originalFile") {
-            Rename-Item -Path "$outputDir/$originalFile" -NewName $newFilename
-            echo "PACKAGEFILENAME=$newFilename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            Write-Host "Successfully renamed to $newFilename"
-          } else {
-            Write-Error "File $outputDir/$originalFile not found!"
-            Write-Host "Available files in $outputDir :"
-            Get-ChildItem -Path $outputDir | ForEach-Object { Write-Host "  $($_.Name)" }
+          # Search for the file in common output directories
+          $possibleDirs = @(
+            "packages/BUILD/output",
+            "BUILD/output", 
+            "output",
+            "."
+          )
+          
+          $found = $false
+          foreach ($dir in $possibleDirs) {
+            if (Test-Path "$dir/$originalFile") {
+              Rename-Item -Path "$dir/$originalFile" -NewName $newFilename
+              echo "PACKAGEFILENAME=$newFilename" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+              Write-Host "Successfully renamed to $newFilename in $dir"
+              $found = $true
+              break
+            }
+          }
+          
+          if (-not $found) {
+            Write-Error "File $originalFile not found in any common output directories!"
+            Write-Host "Searching for any package files:"
+            Get-ChildItem -Recurse -Filter "smplayer*" -ErrorAction SilentlyContinue | Format-Table FullName
             exit 1
           }
 
