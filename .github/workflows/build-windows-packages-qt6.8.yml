@@ -69,6 +69,7 @@ jobs:
           target: 'desktop'
           arch: 'win64_mingw'
           tools: 'tools_mingw1310'
+          modules: 'qt5compat'
 
       - name: Set mingw32 path (64 bit)
         if: ${{ matrix.config.arch == 'x64' }}
