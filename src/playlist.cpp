@@ -123,6 +123,33 @@ public:
 };
 #endif
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+#include <QCollator>
+
+class PlaylistSortProxy : public QSortFilterProxyModel {
+public:
+	explicit PlaylistSortProxy(QObject *parent = nullptr)
+		: QSortFilterProxyModel(parent)
+	{
+		collator.setNumericMode(true);                  // ORDEN NATURAL
+		collator.setCaseSensitivity(Qt::CaseInsensitive);
+	}
+
+protected:
+	bool lessThan(const QModelIndex &left,
+				  const QModelIndex &right) const override
+	{
+		QString l = sourceModel()->data(left, sortRole()).toString();
+		QString r = sourceModel()->data(right, sortRole()).toString();
+		return collator.compare(l, r) < 0;
+	}
+
+private:
+	mutable QCollator collator;
+};
+#endif
+
+
 /* ----------------------------------------------------------- */
 
 
@@ -432,7 +459,11 @@ void Playlist::createTable() {
 	table->setColumnCount(COL_SHUFFLE + 1);
 	//table->setSortRole(Qt::UserRole + 1);
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+	proxy = new PlaylistSortProxy(this);
+#else
 	proxy = new QSortFilterProxyModel(this);
+#endif
 	proxy->setSourceModel(table);
 	proxy->setSortRole(Qt::UserRole + 1);
 	proxy->setFilterRole(Qt::UserRole + 1);
@@ -1804,6 +1835,7 @@ void Playlist::addFiles(QStringList files, AutoGetInfo auto_get_info) {
 	MediaData data;
 	setCursor(Qt::WaitCursor);
 	#endif
+	listView->setSortingEnabled(false);
 
 	QString initial_file;
 	int new_current_item = -1;
@@ -1840,7 +1872,13 @@ void Playlist::addFiles(QStringList files, AutoGetInfo auto_get_info) {
 	#endif
 
 	if (new_current_item != -1) setCurrentItem(new_current_item);
-	if (shuffleAct->isChecked()) shuffle(true);
+
+	listView->setSortingEnabled(true);
+	if (shuffleAct->isChecked()) {
+		shuffle(true);
+	} else {
+		resort();
+	}
 	qDebug() << "Playlist::addFiles: latest_dir:" << latest_dir;
 }
 
@@ -2661,6 +2699,13 @@ void Playlist::changeEvent(QEvent *e) {
 	} else {
 		QWidget::changeEvent(e);
 	}
+}
+
+void Playlist::resort() {
+	if (!listView->isSortingEnabled()) return;
+	int col = listView->horizontalHeader()->sortIndicatorSection();
+	Qt::SortOrder order = listView->horizontalHeader()->sortIndicatorOrder();
+	listView->sortByColumn(col, order);
 }
 
 #include "moc_playlist.cpp"
