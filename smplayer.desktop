@@ -1,6 +1,6 @@
 [Desktop Entry]
 Categories=Qt;AudioVideo;Player;Video;
-Comment=A great GUI frontend for MPlayer and mpc
+Comment=A great GUI frontend for MPlayer and mpv
 Exec=smplayer %U
 GenericName=Media Player
 Icon=smplayer
