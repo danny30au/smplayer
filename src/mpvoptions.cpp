@@ -652,7 +652,7 @@ void MPVProcess::setOption(const QString & option_name, const QVariant & value) 
 	    option_name == "priority" ||
 	    option_name == "hwdec" ||
 	    option_name == "autosync" ||
-	    option_name == "dvd-device" || option_name == "cdrom-device" ||
+	    option_name == "dvd-device" || option_name == "cdrom-device" || option_name == "cdda-device" ||
 	    option_name == "demuxer" ||
 	    option_name == "frames" ||
 	    option_name == "user-agent" || option_name == "referrer" || option_name == "http-header-fields" ||
@@ -832,7 +832,7 @@ void MPVProcess::quit() {
 }
 
 void MPVProcess::setVolume(int v) {
-	sendCommand("set volume " + QString::number(v));
+	sendCommand("no-osd set volume " + QString::number(v));
 }
 
 void MPVProcess::setOSD(int o) {
@@ -1372,6 +1372,8 @@ void MPVProcess::setSubStyles(const AssStyles & styles, const QString &) {
 	QString sub_margin_x = "";
 	if (isOptionAvailable("--sub-margin-x")) sub_margin_x = "--sub-margin-x";
 
+	QString sub_border_style = "";
+	if (isOptionAvailable("--sub-border-style")) sub_border_style = "--sub-border-style";
 
 	if (!sub_font.isEmpty()) {
 		QString font = styles.fontname;
@@ -1387,6 +1389,9 @@ void MPVProcess::setSubStyles(const AssStyles & styles, const QString &) {
 
 	if (styles.borderstyle == AssStyles::Opaque) {
 		arg << sub_back_color + "=#" + ColorUtils::colorToAARRGGBB(styles.backgroundcolor);
+		if (!sub_border_style.isEmpty()) {
+			arg << sub_border_style + "=background-box";
+		}
 	}
 
 	if (!sub_border_color.isEmpty()) {

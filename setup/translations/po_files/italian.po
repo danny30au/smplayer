@@ -5,12 +5,14 @@
 # Translators:
 # Alessandro Forte <a.forte1010@gmail.com>, 2016
 # Giuseppe Pignataro (Fastbyte01) <rogepix@gmail.com>, 2015
+# Giuseppe Pignataro (Fastbyte01) <rogepix@gmail.com>, 2015
+# ROBERTO BORIOTTI <roberto.boriotti@canon.it>, 2026
 # Samir Hawamdeh <s.hawamdeh@teletu.it>, 2021
 msgid ""
 msgstr ""
 "Project-Id-Version: smplayer\n"
 "PO-Revision-Date: 2014-02-24 03:07+0000\n"
-"Last-Translator: Samir Hawamdeh <s.hawamdeh@teletu.it>, 2021\n"
+"Last-Translator: ROBERTO BORIOTTI <roberto.boriotti@canon.it>, 2026\n"
 "Language-Team: Italian (http://app.transifex.com/rvm/smplayer/language/it/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -37,7 +39,7 @@ msgid ""
 "Unsupported operating system.[:n:]SMPlayer ${SMPLAYER_VERSION} requires at "
 "least Windows XP and may not work correctly on your system.[:n:]Do you "
 "really want to continue with the installation?"
-msgstr "Sistema operativo non supportato.[:r:][:n:]SmPlayer ${SMPLAYER_VERSION} richiede almeno Windows XP e potrebbe non funzionare correttamente su questo sistema.[:r:][:n:]Vuoi proseguire con l'installazione?"
+msgstr "Sistema operativo non supportato.[:r:][:n:]SmPlayer ${SMPLAYER_VERSION} richiede almeno Windows XP e potrebbe non funzionare correttamente in  questo sistema.[:r:][:n:]Vuoi proseguire con l'installazione?"
 
 # OS_Not_Supported_VistaRequired
 msgid ""
@@ -55,13 +57,13 @@ msgstr "Per installare questo software è richiesto un sistema operativo Windows
 msgid ""
 "An existing 32-bit installation of SMPlayer exists. You must uninstall "
 "32-bit SMPlayer first."
-msgstr "È già presente un'installazione di SMPlayer 32bit.[:r:][:n:]Prima disinstalla SMPlayer 32bit."
+msgstr "È già presente un'installazione di SMPlayer 32bit.[:r:][:n:]Prima disinstalla SMPlayer a 32bit."
 
 # Existing_64bitInst
 msgid ""
 "An existing 64-bit installation of SMPlayer exists. You must uninstall "
 "64-bit SMPlayer first."
-msgstr "È già presente un'installazione di SMPlayer 64bit.[:r:][:n:]Prima disinstalla SMPlayer 64bit."
+msgstr "È già presente un'installazione di SMPlayer 64bit.[:r:][:n:]Prima disinstalla SMPlayer a 64bit."
 
 # WelcomePage_Title
 msgid "$(^NameDA) Setup"
@@ -98,19 +100,19 @@ msgstr "SMPlayer, librerie condivise, e documentazione."
 
 # Section_DesktopShortcut
 msgid "Desktop"
-msgstr "Scrivania"
+msgstr "Desktop"
 
 # Section_DesktopShortcut_Desc
 msgid "Creates a shortcut to SMPlayer on the desktop."
-msgstr "Crea un collegamento a SMPlayer sulla scrivania."
+msgstr "Crea collegamento a SMPlayer sul desktop"
 
 # Section_StartMenu
 msgid "Start Menu"
-msgstr "Menu di avvio"
+msgstr "Menu Start"
 
 # Section_StartMenu_Desc
 msgid "Create a Start Menu entry for SMPlayer."
-msgstr "Crea nel menu di avvio un elemento per SMPlayer."
+msgstr "Crea collegamento di SMPlayer nel menu Start."
 
 # Section_MPlayer
 msgid "MPlayer (required)"
@@ -131,7 +133,7 @@ msgstr "Codec aggiuntivi MPlayer (per l'installazione è richiesta una connessio
 
 # Section_MPV_Desc
 msgid "A feature-rich fork of MPlayer && MPlayer2"
-msgstr "Una fork di MPlayer && MPlayer2 ricca di funzioni"
+msgstr "Una fork di MPlayer e MPlayer2 ricca di funzioni"
 
 # Section_YTDL
 msgid "Youtube support (download required)"
@@ -157,11 +159,11 @@ msgstr "Temi icone aggiuntivi per SMPlayer."
 
 # Section_Translations
 msgid "Languages"
-msgstr "Traduzioni interfaccia"
+msgstr "Lingue interfaccia"
 
 # Section_Translations_Desc
 msgid "Non-English language files for SMPlayer."
-msgstr "Lingue IU aggiuntive (oltre all'inglese)."
+msgstr "Lingue aggiuntive IU (oltre all'inglese)."
 
 # Section_ResetSettings_Desc
 msgid "Deletes SMPlayer preferences leftover from previous installations."
@@ -173,7 +175,7 @@ msgid ""
 "implemented natively, like newer RealVideo variants and a lot of uncommon "
 "formats.[:n:]Note that they are not necessary to play most common formats "
 "like DVDs, MPEG-1/2/4, etc."
-msgstr "I codec binari forniscono il supporto per i codec che non sono stati ancora implementati nativamente, per esempio per le varianti di RealVideo e anche un sacco di formati poco utilizzati.[:n:]Nota che non sono richiesti per riprodurre i formati più comuni come DVD, MPEG-1/2/4, ecc."
+msgstr "I codec binari forniscono il supporto per i codec che non sono stati ancora implementati nativamente, per esempio le varianti di RealVideo e anche altri formati poco usati.[:n:]Nota che non sono richiesti per riprodurre i formati più comuni come DVD, MPEG-1/2/4, ecc."
 
 # Reinstall_Header_Text
 msgid "Select Install Type"
@@ -247,7 +249,7 @@ msgstr "Download codec MPlayer..."
 
 # Codecs_DL_Retry
 msgid "MPlayer codecs were not successfully installed. Retry?"
-msgstr "I codec di MPlayer non sono stati installati correttamente.[:n:]Vuoi riprovare?"
+msgstr "I codec MPlayer non sono stati installati correttamente.[:n:]Vuoi riprovare?"
 
 # Codecs_DL_Failed
 msgid "Failed to download MPlayer codecs: '$R0'."
@@ -261,7 +263,7 @@ msgstr "Installazione dei codec MPlayer non riuscita."
 msgid ""
 "This installation can only be uninstalled by a user with administrator "
 "privileges."
-msgstr "La disinstallazione può essere effettuata solo da un utente con permessi amministrativi."
+msgstr "La disinstallazione può essere effettuata solo da un utente con permessi amministratore."
 
 # Uninstaller_Aborted
 msgid "Uninstall aborted by user."
@@ -279,22 +281,22 @@ msgstr "Installazione di SMPlayer non trovata."
 
 # Uninstaller_64bitOnly
 msgid "This installation can only be uninstalled on 64-bit Windows."
-msgstr "Questa installazione può essere disinstallata solo in Windows 64-bit."
+msgstr "Questa installazione può essere disinstallata solo in Windows a 64bit."
 
 # Application_Description
 msgid ""
 "SMPlayer is a complete front-end for MPlayer, from basic features like "
 "playing videos, DVDs, VCDs to more advanced features like support for "
 "MPlayer filters, edl lists, and more."
-msgstr "SMPlayer è un'interfaccia completa per MPlayer, fornisce funzionalità di base come la riproduzione di video, DVD, VCD e funzionalità più avanzate come il supporto dei filtri di MPlayer, le liste EDL e altro ancora."
+msgstr "SMPlayer è un'interfaccia completa per MPlayer, fornisce funzionalità di base come la riproduzione di video, DVD, VCD e funzionalità più avanzate come il supporto dei filtri di MPlayer, elenchi EDL e altro ancora."
 
 # Info_Codecs_Backup
 msgid "Backing up codecs from previous installation..."
-msgstr "Copia di sicurezza dei codec dell'installazione precedente..."
+msgstr "Copia di sicurezza codec dall'installazione precedente..."
 
 # Info_Codecs_Restore
 msgid "Restoring codecs from previous installation..."
-msgstr "Ripristino codec dell'installazione precedente..."
+msgstr "Ripristino codec dall'installazione precedente..."
 
 # Info_Del_Files
 msgid "Deleting Files..."
@@ -302,7 +304,7 @@ msgstr "Eliminazione file..."
 
 # Info_Del_Registry
 msgid "Deleting Registry Keys..."
-msgstr "Eliminazione chiavi di registro..."
+msgstr "Eliminazione chiavi registro..."
 
 # Info_Del_Shortcuts
 msgid "Deleting Shortcuts..."
@@ -314,7 +316,7 @@ msgstr "Ripristino associazioni file..."
 
 # Info_RollBack
 msgid "Rolling back changes..."
-msgstr "Rollback delle modifiche..."
+msgstr "Rollback modifiche..."
 
 # Info_Files_Extract
 msgid "Extracting files..."
@@ -334,7 +336,7 @@ msgstr "Salvataggio mpv..."
 
 # Info_MPV_Restore
 msgid "Restoring mpv from previous installation..."
-msgstr "Ripristino mpv dalla precedente installazione..."
+msgstr "Ripristino mpv dall' installazione precedente..."
 
 # MPV_DL_Msg
 msgid "Downloading mpv..."
@@ -370,7 +372,7 @@ msgstr "Avviso: youtube-dl si è chiuso in modo anomalo con il codice di uscita:
 
 # YTDL_Error_Msg2
 msgid "Visual C++ 2010 Runtime (x86) is required for youtube-dl."
-msgstr "Per youtube-dl è necessario Visual C++ 2010 Runtime (x86)."
+msgstr "Per youtube-dl è necessario il runtime di Visual C++ 2010 (x86)."
 
 # SMTube_Incompatible_Msg1
 msgid ""
@@ -392,4 +394,4 @@ msgstr "Pulizia impostazioni SMPlayer..."
 
 # Section_MPlayerCodecs_Desc
 msgid "Binary codecs are not supported in this version."
-msgstr "I codec binari non sono supportati in questa versione."
+msgstr "In questa versione i codec binari non sono supportati."

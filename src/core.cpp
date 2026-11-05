@@ -473,7 +473,7 @@ void Core::open(QString file, int seek) {
 	if ( (fi.exists()) && (!fi.isDir()) ) {
 		qDebug("Core::open: * identified as local file");
 		// Local file
-		file = QFileInfo(file).absoluteFilePath();
+		file = QDir::toNativeSeparators(QFileInfo(file).absoluteFilePath());
 		openFile(file, seek);
 	} 
 	else
@@ -563,7 +563,7 @@ void Core::openFile(QString filename, int seek) {
 
 	QFileInfo fi(filename);
 	if (fi.exists()) {
-		playNewFile(fi.absoluteFilePath(), seek);
+		playNewFile(QDir::toNativeSeparators(fi.absoluteFilePath()), seek);
 	} else {
 		//File doesn't exists
 		//TODO: error message
@@ -1509,7 +1509,7 @@ void Core::goToPosition(int value) {
 		goToPos( (double) value / (SEEKBAR_RESOLUTION / 100) );
 	} else {
 		if (mdat.duration > 0) {
-			int jump_time = (double) mdat.duration * value / SEEKBAR_RESOLUTION;
+			double jump_time = (double) mdat.duration * value / SEEKBAR_RESOLUTION;
 			goToSec(jump_time);
 		}
 	}
@@ -2159,7 +2159,14 @@ void Core::startMplayer( QString file, double seek ) {
 
 	if ((mdat.type==TYPE_VCD) || (mdat.type==TYPE_AUDIO_CD)) {
 		if (!pref->cdrom_device.isEmpty()) {
-			proc->setOption("cdrom-device", pref->cdrom_device);
+			#ifdef MPV_SUPPORT
+			if (proc->isMPV() && mdat.type == TYPE_AUDIO_CD) {
+				proc->setOption("cdda-device", pref->cdrom_device);
+			} else
+			#endif
+			{
+				proc->setOption("cdrom-device", pref->cdrom_device);
+			}
 		}
 	}
 
